@@ -6,9 +6,9 @@ module.exports = {
   mode: "development",
   devtool: "inline-source-map",
   entry: {
-    background: "./src/background.js",
-    content: "./src/content.js",
-    popup: "./src/popup.js",
+    background: "./src/background.ts",
+    content: "./src/content.ts",
+    popup: "./src/popup.ts",
   },
   output: {
     filename: "[name].js",
@@ -20,7 +20,15 @@ module.exports = {
         test: /\.scss$/,
         use: [MiniCssExtractPlugin.loader, "css-loader", "sass-loader"],
       },
+      {
+        test: /\.(js|ts)x?$/,
+        use: ["babel-loader"],
+        exclude: /node_modules/,
+      },
     ],
+  },
+  resolve: {
+    extensions: [".tsx", ".ts", ".js"],
   },
   plugins: [
     new CopyPlugin({
