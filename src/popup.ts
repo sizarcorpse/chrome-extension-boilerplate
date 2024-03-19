@@ -1,3 +1,3 @@
-import "./styles/popup.scss";
+import "@/styles/popup.scss";
 
 console.log("popup.js");

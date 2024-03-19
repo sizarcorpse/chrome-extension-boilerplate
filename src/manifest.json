@@ -1,8 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "🦎",
-  "version": "1.0",
-  "permissions": ["activeTab", "tabs", "scripting"],
+  "name": "🤯 Extension",
+  "version": "1.0.0",
+  "description": "A basic google chrome extension boilerplate with manifest v3 to get you started",
+  "permissions": ["activeTab", "tabs", "scripting", "storage"],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
@@ -27,5 +28,12 @@
       "css": ["content.css"],
       "run_at": "document_idle"
     }
-  ]
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["images/*"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "host_permissions": ["<all_urls>"]
 }

@@ -1,3 +1,5 @@
-import "./styles/content.scss";
+import "@/styles/content.scss";
 
-console.log("content.jsx");
+(async () => {
+  console.log("content.jsx");
+})();

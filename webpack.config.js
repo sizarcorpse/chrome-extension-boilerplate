@@ -1,8 +1,13 @@
-const path = require("path");
-const CopyPlugin = require("copy-webpack-plugin");
-const MiniCssExtractPlugin = require("mini-css-extract-plugin");
+import { CleanWebpackPlugin } from "clean-webpack-plugin";
+import CopyPlugin from "copy-webpack-plugin";
+import MiniCssExtractPlugin from "mini-css-extract-plugin";
+import path, { dirname } from "path";
+import { fileURLToPath } from "url";
 
-module.exports = {
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+export default {
   mode: "development",
   devtool: "inline-source-map",
   entry: {
@@ -28,11 +33,21 @@ module.exports = {
     ],
   },
   resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "src"),
+    },
     extensions: [".tsx", ".ts", ".js"],
   },
+
   plugins: [
+    new CleanWebpackPlugin(),
+
     new CopyPlugin({
-      patterns: [{ from: "public", to: "." }],
+      patterns: [
+        { from: "public", to: "." },
+        { from: "src/manifest.json", to: "." },
+        { from: "src/html", to: "." },
+      ],
     }),
     new MiniCssExtractPlugin({
       filename: "[name].css",
