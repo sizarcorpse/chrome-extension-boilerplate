@@ -1,3 +1,6 @@
 import "@/styles/popup.scss";
+import "@/styles/styles.css";
 
-console.log("popup.js");
+(async () => {
+  console.log("popup.ts loaded!");
+})();
