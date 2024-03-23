@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
-import { ZodSchema } from "zod";
+import { ZodSchema, z } from "zod";
 
 export type Response<T> = {
   data: T | null;
@@ -26,6 +26,25 @@ export type BaseDocument = {
 export type Document<T> = T & BaseDocument;
 
 export type Documents<T> = Document<T>[];
+
+type DirectComparison<T> = {
+  [K in keyof T]?: T[K] | { $gt?: T[K]; $lt?: T[K]; $eq?: T[K] };
+};
+
+type OperatorComparison<T> = {
+  [K in keyof T]?: { $gt?: T[K]; $lt?: T[K]; $eq?: T[K] };
+};
+
+type InnerCondition<T> = DirectComparison<T> & OperatorComparison<T>;
+
+type LogicalOperation<T> = {
+  $or?: InnerCondition<T>[];
+  $and?: InnerCondition<T>[];
+  $not?: InnerCondition<T>[];
+};
+
+type QueryCondition<T> = InnerCondition<T> &
+  LogicalOperation<T> & { [key: string]: any };
 
 export class Collection<T> {
   private schema: ZodSchema<T>;
@@ -73,6 +92,80 @@ export class Collection<T> {
         }
       });
     });
+  };
+
+  static match = <T>(
+    document: Document<T>,
+    condition: QueryCondition<T>
+  ): boolean => {
+    for (let field in condition) {
+      if (field.startsWith("$")) {
+        switch (field) {
+          case "$or":
+            if (
+              !(condition[field] as QueryCondition<T>[]).some((cond: any) =>
+                this.match(document, cond)
+              )
+            ) {
+              return false;
+            }
+            break;
+          case "$and":
+            if (
+              !(condition[field] as QueryCondition<T>[]).every((cond: any) =>
+                this.match(document, cond)
+              )
+            ) {
+              return false;
+            }
+            break;
+          case "$not":
+            if (Array.isArray(condition[field])) {
+              if (
+                (condition[field] as QueryCondition<T>[]).some((cond: any) =>
+                  this.match(document, cond)
+                )
+              ) {
+                return false;
+              }
+            } else {
+              if (this.match(document, condition[field] as any)) {
+                return false;
+              }
+            }
+            break;
+        }
+      } else if (
+        typeof condition[field] === "object" &&
+        condition[field] !== null
+      ) {
+        for (let operator in condition[field]) {
+          switch (operator) {
+            case "$gt":
+              if ((document[field] as any) <= condition[field][operator]) {
+                return false;
+              }
+              break;
+            case "$lt":
+              if ((document[field] as any) >= condition[field][operator]) {
+                return false;
+              }
+              break;
+            case "$eq":
+              if (document[field] !== condition[field][operator]) {
+                return false;
+              }
+              break;
+          }
+        }
+      } else {
+        if (document[field] !== condition[field]) {
+          return false;
+        }
+      }
+    }
+
+    return true;
   };
 
   createCollection = async (): Promise<void> => {
@@ -135,7 +228,7 @@ export class Collection<T> {
   };
 
   read = async (query: {
-    [key: string]: string;
+    [K in keyof Document<T>]?: string;
   }): Promise<Response<Document<T>>> => {
     try {
       const state: Documents<T> = await Collection.get(this.collectionKey);
@@ -170,7 +263,7 @@ export class Collection<T> {
 
   update = async (
     query: {
-      [key: string]: string;
+      [K in keyof Document<T>]?: string;
     },
     data: Partial<T>
   ): Promise<Response<Document<T>>> => {
@@ -258,4 +351,132 @@ export class Collection<T> {
       };
     }
   };
+
+  createMany = async (data: T[]): Promise<Response<Documents<T>>> => {
+    try {
+      if (!data) {
+        return {
+          data: [],
+          status: "error",
+          message: "Data is required",
+          errors: "bad-request",
+        };
+      }
+
+      const validate = this.schema.array().safeParse(data);
+      if (!validate.success)
+        throw new Error(
+          validate.error.issues.map((issue: any) => issue.message).join(", ")
+        );
+
+      const _createdAt = new Date().toISOString();
+      const _updatedAt = _createdAt;
+
+      const transformed = validate.data.map((item) => ({
+        ...item,
+        _id: uuidv4(),
+        _createdAt,
+        _updatedAt,
+      }));
+
+      const state: Documents<T> = await Collection.get(this.collectionKey);
+      state.push(...transformed);
+
+      await Collection.set(this.collectionKey, state);
+
+      return {
+        data: transformed,
+        count: transformed.length,
+        status: "ok",
+        message: "Documents created successfully.",
+      };
+    } catch (error: any) {
+      return {
+        data: [],
+        status: "error",
+        message: error.message,
+      };
+    }
+  };
+
+  readMany = async (queries: {
+    where?: QueryCondition<T> | QueryCondition<T>[];
+    orderBy?: {
+      [K in keyof Document<T>]?: "asc" | "desc";
+    };
+    limit?: number;
+    skip?: number;
+  }): Promise<Response<Documents<T>>> => {
+    try {
+      let state: Documents<T> = await Collection.get(this.collectionKey);
+      let result: Documents<T> = [];
+
+      if (queries && queries.where) {
+        let { where, orderBy, limit, skip } = queries;
+        let _limit = limit || 10;
+        let _skip = skip || 0;
+
+        if (where) {
+          if (!Array.isArray(where)) {
+            where = [where];
+          }
+
+          result = state.filter((document) =>
+            where.some((condition: any) =>
+              Collection.match(document, condition)
+            )
+          );
+        }
+
+        if (orderBy) {
+          result = result.sort((a, b) =>
+            Object.entries(orderBy).reduce((acc, [key, order]) => {
+              if (acc !== 0) return acc;
+              if (a[key] < b[key]) return order === "asc" ? -1 : 1;
+              if (a[key] > b[key]) return order === "asc" ? 1 : -1;
+              return 0;
+            }, 0)
+          );
+        }
+        if (
+          limit !== undefined ||
+          _skip !== undefined ||
+          _limit !== undefined
+        ) {
+          result = result.slice(_skip, limit ? _skip + limit : _skip + _limit);
+        }
+
+        return {
+          data: result,
+          count: result.length,
+          status: "ok",
+          message: "Documents retrieved successfully.",
+        };
+      }
+
+      return {
+        data: state,
+        count: state.length,
+        status: "ok",
+        message: "Documents retrieved successfully.",
+      };
+    } catch (error: any) {
+      return {
+        data: [],
+        status: "error",
+        message: error.message,
+      };
+    }
+  };
 }
+
+const userSchema = z.object({
+  username: z.string(),
+  role: z.enum(["admin", "user"]),
+  posted: z.number(),
+  verified: z.boolean(),
+});
+
+type UserType = z.infer<typeof userSchema>;
+
+export const userCollection = new Collection<UserType>("users", userSchema);
