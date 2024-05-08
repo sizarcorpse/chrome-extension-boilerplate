@@ -469,14 +469,3 @@ export class Collection<T> {
     }
   };
 }
-
-const userSchema = z.object({
-  username: z.string(),
-  role: z.enum(["admin", "user"]),
-  posted: z.number(),
-  verified: z.boolean(),
-});
-
-type UserType = z.infer<typeof userSchema>;
-
-export const userCollection = new Collection<UserType>("users", userSchema);

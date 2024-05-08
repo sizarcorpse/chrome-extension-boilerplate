@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "outDir": "./dist/",
+    "outDir": "./extension/",
     "lib": ["dom", "dom.iterable", "esnext"],
     "noImplicitAny": true,
     "module": "es6",
