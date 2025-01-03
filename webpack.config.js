@@ -20,7 +20,10 @@ export default (env) => {
     },
     output: {
       filename: "[name].js",
-      path: path.resolve(__dirname, "extension"),
+      path:
+        env.NODE_ENV === "development"
+          ? path.resolve(__dirname, "dist")
+          : path.resolve(__dirname, "extension"),
     },
     module: {
       rules: [
@@ -45,6 +48,10 @@ export default (env) => {
       },
       extensions: [".tsx", ".ts", ".js"],
     },
+    performance: {
+      maxEntrypointSize: 512000,
+      maxAssetSize: 512000,
+    },
 
     plugins: [
       new CleanWebpackPlugin(),
@@ -52,7 +59,7 @@ export default (env) => {
         patterns: [
           { from: "public", to: "." },
           { from: "src/manifest.json", to: "." },
-          { from: "src/html", to: "." },
+          { from: "src/html", to: "html" },
         ],
       }),
       new MiniCssExtractPlugin({

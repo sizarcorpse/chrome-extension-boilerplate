@@ -1,18 +1,22 @@
-type FindElement = (
+type FindElement = <T extends HTMLElement = HTMLElement>(
   selector: string,
-  parent?: Element | Document
-) => Element | null;
+  parent?: HTMLElement | Document
+) => T | null;
 
-export const findElement: FindElement = (selector, parent = document) => {
-  try {
-    if (typeof selector !== "string") {
-      throw new Error("Selector must be a string");
-    }
+export const findElement: FindElement = <T extends HTMLElement = HTMLElement>(
+  selector: string,
+  parent: HTMLElement | Document = document
+): T | null => {
+  if (typeof selector !== "string") {
+    console.error("Selector must be a string");
+    return null;
+  }
 
-    const element = parent.querySelector(selector);
-    return element;
-  } catch (error) {
-    console.error(`Error finding element:${selector}`, error);
+  const element = parent.querySelector(selector);
+
+  if (element instanceof HTMLElement) {
+    return element as T;
+  } else {
     return null;
   }
 };
@@ -106,12 +110,13 @@ export const waitForElement: WaitForElement = async (
         });
         elapsed += runInterval;
       }
-      throw new Error(`Element matching selector "${selector}" not found.`);
+      // throw new Error(`Element matching selector "${selector}" not found.`);
+      return null;
     };
 
     return await checkElement();
   } catch (error) {
-    console.error("Error waiting for element:", error);
+    // console.error("Error waiting for element:", error);
     return null;
   }
 };
@@ -161,16 +166,16 @@ export const hasClass: HasClass = (element, classNames, mode = "some") => {
 
 type AppendElement = (
   parent: string | Element | HTMLElement,
-  child: Node | HTMLElement,
+  child: Node | HTMLElement | DocumentFragment,
   position?: "before" | "after",
-  reference?: number | string | Element | HTMLElement
+  reference?: number | string | Element | HTMLElement | null
 ) => void;
 
 export const appendElement: AppendElement = (
   parent,
   child,
   position = "after",
-  reference = 0
+  reference = null
 ) => {
   try {
     const parentElement =
@@ -201,5 +206,70 @@ export const appendElement: AppendElement = (
     }
   } catch (error) {
     console.error("Error appending element:", error);
+  }
+};
+
+type CreateContextualFragment = (markup: string) => DocumentFragment | null;
+
+export const createContextualFragment: CreateContextualFragment = (markup) => {
+  try {
+    if (typeof markup !== "string") {
+      throw new Error("Markup must be a string");
+    }
+
+    const fragment = document.createRange().createContextualFragment(markup);
+
+    return fragment;
+  } catch (error) {
+    console.error("Error creating contextual fragment:", error);
+    return null;
+  }
+};
+
+type FindParent = (
+  element: HTMLElement,
+  parent: string | Element,
+  stepup?: number
+) => HTMLElement | null;
+
+export const findParent: FindParent = (element, parent, stepup = 10) => {
+  let currentElement: HTMLElement | null = element;
+  let steps = 0;
+
+  while (currentElement && steps < stepup) {
+    if (
+      (typeof parent === "string" && currentElement.matches(parent)) ||
+      (parent instanceof Element && currentElement === parent)
+    ) {
+      return currentElement;
+    }
+    currentElement = currentElement.parentElement;
+    steps++;
+  }
+
+  return null;
+};
+
+// create a new  utils function to `findElementByTextContent` that will find an element by its text content
+type FindElementByTextContent = (
+  selector: string,
+  textContent: string
+) => HTMLElement | null;
+
+export const findElementByTextContent: FindElementByTextContent = (
+  selector,
+  textContent
+) => {
+  try {
+    const elements = findElements(selector);
+
+    if (!elements.length) return null;
+
+    return elements.find(
+      (element) => (element as HTMLElement).textContent === textContent
+    ) as HTMLElement | null;
+  } catch (error) {
+    console.error("Error finding element by text content:", error);
+    return null;
   }
 };

@@ -5,7 +5,7 @@
   "description": "A basic google chrome extension boilerplate with manifest v3 to get you started",
   "permissions": ["activeTab", "tabs", "scripting", "storage"],
   "action": {
-    "default_popup": "popup.html",
+    "default_popup": "html/popup.html",
     "default_icon": {
       "16": "images/icon.png",
       "48": "images/icon.png",
