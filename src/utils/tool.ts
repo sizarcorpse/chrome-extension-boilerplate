@@ -1,3 +1,5 @@
+import { HTMLElementType } from "react";
+
 type FindElement = <T extends HTMLElement = HTMLElement>(
   selector: string,
   parent?: HTMLElement | Document
@@ -41,7 +43,7 @@ export const findElements: FindElements = (selector, parent = document) => {
 };
 
 type CreateElement = (
-  type: keyof JSX.IntrinsicElements,
+  type: keyof HTMLElementTagNameMap,
   options?: {
     [key: string]: string | undefined;
     class?: string;
